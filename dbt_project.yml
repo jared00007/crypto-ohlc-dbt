@@ -1,0 +1,37 @@
+name: 'crypto_ohlc'
+version: '0.1.0'
+config-version: 2
+
+profile: 'crypto_ohlc'
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+vars:
+  # Trailing window re-read on every incremental run so the still-forming candle
+  # gets restated instead of frozen at its first-seen values. See docs/brief-addendum.md §11.
+  lookback_hours: 3
+
+models:
+  crypto_ohlc:
+    staging:
+      +schema: staging
+      +materialized: view
+    intermediate:
+      +schema: intermediate
+      +materialized: view
+    marts:
+      +schema: marts
+      +materialized: table
+
+snapshots:
+  crypto_ohlc:
+    +schema: snapshots

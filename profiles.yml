@@ -1,0 +1,10 @@
+# Committed at the project root so local runs and CI share one profile with no
+# ~/.dbt setup. dbt reads profiles.yml from the working directory before ~/.dbt/.
+crypto_ohlc:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: crypto_ohlc.duckdb
+      threads: 4
+      schema: main
