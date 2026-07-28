@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+# A newer push to the same branch makes an in-flight run redundant.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: build and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      # --locked fails rather than silently re-resolving, so a pyproject change
+      # without a matching uv.lock update is caught here instead of drifting.
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Lint
+        run: uv run ruff check ingest scripts
+
+      # No `dbt deps`: dbt_utils is vendored, so the build needs no network at all.
+      # Fixtures are committed for the same reason — CI never calls an exchange,
+      # which would make it rate-limited and non-deterministic.
+      - name: Land fixture data
+        run: uv run python -m ingest.load --source fixture
+
+      - name: Build and test
+        run: uv run dbt build
+
+      # Asserts the incremental restates the still-forming candle rather than
+      # freezing it, and stays identical to a full refresh. See
+      # docs/brief-addendum.md §11.
+      - name: Verify incremental behaviour
+        run: uv run python scripts/verify_incremental.py
