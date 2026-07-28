@@ -1,5 +1,7 @@
 # crypto-ohlc-dbt
 
+[![CI](https://github.com/jared00007/crypto-ohlc-dbt/actions/workflows/ci.yml/badge.svg)](https://github.com/jared00007/crypto-ohlc-dbt/actions/workflows/ci.yml)
+
 Multi-venue crypto OHLC pipeline. Python ingesters land venue-native candles into
 DuckDB; all reshaping, normalization, and modeling happens in dbt.
 
@@ -64,6 +66,7 @@ stg_<venue>__ohlc      three incompatible shapes -> one contract
 int_ohlc__unioned      stacked, with canonical asset_pair joined on
 fct_ohlc_candles       incremental grain table, lookback + delete+insert
 fct_venue_dislocation  cross-venue close dispersion, settled candles only
+snap_asset_pair        SCD2 history of venue symbol -> asset pair mapping
 ```
 
 Models land in real DuckDB schemas — `raw`, `staging`, `intermediate`, `marts` —
@@ -96,18 +99,30 @@ build, and CI runs it on every push:
 uv run python scripts/verify_incremental.py
 ```
 
+## The snapshot
+
+`snap_asset_pair` tracks SCD2 history of the venue-symbol mapping using the `check`
+strategy rather than `timestamp`, because the source is a hand-maintained seed with
+no trustworthy `updated_at`. `timestamp` needs a field the source reliably bumps on
+every edit; `check` compares the tracked columns instead, which is the honest choice
+when a source cannot vouch for its own modification time.
+
+Worth saying plainly: this is a learning exercise for SCD2 mechanics. Public candle
+endpoints expose almost no genuinely drifting pair metadata, so the drift it captures
+is drift introduced by editing the seed. Nothing downstream depends on it.
+
 ## Status
 
-Phases 0–4 are complete: pinned environment, dual-path ingestion, the three
-staging models, intermediate and marts layers, the incremental fact with its
-lookback window, and CI that builds and tests offline on every push.
-`dbt build --full-refresh` runs **77 tests green** from an empty database.
+All phases are complete: pinned environment, dual-path ingestion, the three staging
+models, intermediate and marts layers, the incremental fact with its lookback
+window, the SCD2 snapshot, and CI that builds and tests offline on every push.
+`dbt build --full-refresh` runs **78 tests green** from an empty database.
 
 Current fixture data: 1,571 candles, 499 comparable settled candles, mean
 cross-venue spread 8.5 bps and max 20.7 bps.
 
-Not yet built: the `snap_asset_pair` SCD2 snapshot described in
-[§12](docs/brief-addendum.md), and a returns model.
+Possible next steps: a returns model, more pairs beyond BTC, and a decision on
+whether to exclude USDT-quoted venues from dislocation or adjust for the peg.
 
 ## License
 
