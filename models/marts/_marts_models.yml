@@ -1,0 +1,70 @@
+version: 2
+
+models:
+  - name: fct_ohlc_candles
+    description: >
+      One row per venue / asset_pair / granularity / candle_start. Incremental with a
+      trailing lookback window so the still-forming candle is restated on each run
+      rather than frozen at its first-seen values. The still-forming candle is
+      retained here on purpose; settled-only filtering happens downstream.
+
+    data_tests:
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "high >= low"
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "high >= open and high >= close"
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "low <= open and low <= close"
+
+    columns:
+      - name: ohlc_key
+        description: "Surrogate key over venue, venue_symbol, granularity, candle_start. Drives delete+insert restatement."
+        data_tests: [not_null, unique]
+      - name: venue
+        data_tests: [not_null]
+      - name: asset_pair
+        description: "Canonical cross-venue pair, from venue_pair_map."
+        data_tests: [not_null]
+      - name: quote_asset
+        description: "Actual quote currency. USDT on Binance.US, USD elsewhere."
+        data_tests: [not_null]
+      - name: candle_start
+        data_tests: [not_null]
+      - name: close
+        data_tests: [not_null]
+
+  - name: fct_venue_dislocation
+    description: >
+      Cross-venue close dispersion per candle, over settled candles only. The newest
+      candle per venue is excluded because comparing a partial close against a
+      settled one manufactures dislocation that is not real.
+
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [asset_pair, granularity, candle_start]
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "spread_abs >= 0"
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "max_close >= min_close"
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "venue_count > 1"
+
+    columns:
+      - name: candle_start
+        data_tests: [not_null]
+      - name: venue_count
+        description: "Venues contributing a settled candle at this timestamp."
+        data_tests: [not_null]
+      - name: spread_abs
+        description: "max_close - min_close across venues, in quote currency."
+        data_tests: [not_null]
+      - name: spread_bps
+        description: "spread_abs as basis points of the cross-venue mean close."
+        data_tests: [not_null]

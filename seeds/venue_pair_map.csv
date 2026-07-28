@@ -1,0 +1,4 @@
+venue,venue_symbol,asset_pair,base_asset,quote_asset
+binance_us,BTCUSDT,BTC-USD,BTC,USDT
+coinbase,BTC-USD,BTC-USD,BTC,USD
+kraken,XBTUSD,BTC-USD,BTC,USD

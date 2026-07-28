@@ -52,15 +52,31 @@ rather than dbt's default `<target>_<custom>` concatenation. This mirrors how th
 same models would land in Snowflake and keeps `dbt docs` lineage readable. The
 override is in `macros/generate_schema_name.sql`.
 
+## Models
+
+```
+stg_<venue>__ohlc      three incompatible shapes -> one contract
+int_ohlc__unioned      stacked, with canonical asset_pair joined on
+fct_ohlc_candles       incremental grain table, lookback + delete+insert
+fct_venue_dislocation  cross-venue close dispersion, settled candles only
+```
+
 ## Status
 
-Phases 0 and 1 are complete. Pinned environment, dbt project config, schema
-override, committed fixtures for all three venues, a dual-path loader landing
-1,571 rows into `raw`, and three `stg_<venue>__ohlc` models reconciling the
-incompatible shapes into one contract. `dbt build` runs 45 tests green.
+Phases 0–3 are complete. `dbt build --full-refresh` runs **77 tests green** from
+an empty database.
 
-Cross-venue sanity check: at a shared `candle_start`, the three venues' closes
-agree within 0.03–0.15%, which is real dislocation rather than a reshaping bug.
+The incremental in `fct_ohlc_candles` is verified three ways, not assumed:
 
-Next: intermediate and marts layers, then the Phase 3 incremental with the
-lookback window.
+1. **Idempotent** — re-running with no new data changes nothing, in either
+   direction of an `except` comparison.
+2. **Restates rather than freezes or duplicates** — re-landing the still-forming
+   candle with a moved close updates that row in place; row count unchanged, no
+   duplicate surrogate keys. This is precisely what the naive
+   `candle_start > max(candle_start)` filter gets wrong.
+3. **Incremental == full refresh** — the two builds are row-for-row identical.
+
+Current fixture data: 1,571 candles, 499 comparable settled candles, mean
+cross-venue spread 8.5 bps and max 20.7 bps.
+
+Next: the `snap_asset_pair` SCD2 snapshot and Phase 4 CI.

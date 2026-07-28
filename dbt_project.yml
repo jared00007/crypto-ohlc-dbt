@@ -35,3 +35,7 @@ models:
 snapshots:
   crypto_ohlc:
     +schema: snapshots
+
+seeds:
+  crypto_ohlc:
+    +schema: seeds

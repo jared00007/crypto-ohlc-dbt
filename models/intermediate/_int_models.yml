@@ -1,0 +1,24 @@
+version: 2
+
+models:
+  - name: int_ohlc__unioned
+    description: >
+      All three venues' staged candles stacked, with the canonical asset_pair joined
+      on. The join is an inner join on purpose: a venue/symbol absent from
+      venue_pair_map is a modeling gap, and the relationship test below makes that
+      loud rather than letting rows disappear silently.
+
+    columns:
+      - name: venue
+        data_tests: [not_null]
+      - name: asset_pair
+        data_tests: [not_null]
+      - name: candle_start
+        data_tests: [not_null]
+      - name: close
+        data_tests: [not_null]
+
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [venue, venue_symbol, granularity, candle_start]

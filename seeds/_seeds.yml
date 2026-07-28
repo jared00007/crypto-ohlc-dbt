@@ -1,0 +1,31 @@
+version: 2
+
+seeds:
+  - name: venue_pair_map
+    description: >
+      Maps each venue's native symbol to a canonical asset_pair so candles can be
+      compared across venues. Kraken calls bitcoin XBT and Coinbase hyphenates,
+      so venue_symbol alone cannot be grouped on.
+
+      Caveat worth stating plainly: Binance.US quotes BTCUSDT while the others quote
+      BTC/USD. Treating them as one asset_pair assumes USDT trades at parity with
+      USD. That assumption is usually close but not exact, and any USDT depeg would
+      surface as apparent venue dislocation rather than as what it is. quote_asset
+      is kept so that effect stays attributable.
+
+    columns:
+      - name: venue
+        data_tests: [not_null]
+      - name: venue_symbol
+        data_tests: [not_null]
+      - name: asset_pair
+        description: "Canonical cross-venue pair identifier."
+        data_tests: [not_null]
+      - name: quote_asset
+        description: "Actual quote currency, which may differ from the canonical pair's."
+        data_tests: [not_null]
+
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [venue, venue_symbol]
