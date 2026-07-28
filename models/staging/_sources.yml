@@ -1,0 +1,18 @@
+version: 2
+
+sources:
+  - name: raw
+    schema: raw
+    description: >
+      Landing tables written by `python -m ingest.load`. Columns are venue-native:
+      the venue's own names, order, timestamp units, and price representation, with
+      no reshaping applied. Loader provenance is prefixed with an underscore.
+      Landing is append-only, so a candle may appear once per batch.
+
+    tables:
+      - name: binance_us__ohlc
+        description: "Binance.US /api/v3/klines — 12-element arrays, open time in epoch milliseconds, prices as strings."
+      - name: coinbase__ohlc
+        description: "Coinbase /products/{id}/candles — 6-element arrays, epoch seconds, low/high/open/close order, prices as JSON numbers landed as DECIMAL."
+      - name: kraken__ohlc
+        description: "Kraken /0/public/OHLC — candles unwrapped from result.<pair>, epoch seconds, prices as strings."

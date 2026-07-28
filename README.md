@@ -54,8 +54,13 @@ override is in `macros/generate_schema_name.sql`.
 
 ## Status
 
-Phase 0 (scaffold) and the ingestion half of Phase 1 are complete: pinned
-environment, dbt project config, schema override, committed fixtures for all
-three venues, and a dual-path loader landing 1,571 rows into `raw`.
+Phases 0 and 1 are complete. Pinned environment, dbt project config, schema
+override, committed fixtures for all three venues, a dual-path loader landing
+1,571 rows into `raw`, and three `stg_<venue>__ohlc` models reconciling the
+incompatible shapes into one contract. `dbt build` runs 45 tests green.
 
-Next: `stg_<venue>__ohlc` models to reconcile the three shapes.
+Cross-venue sanity check: at a shared `candle_start`, the three venues' closes
+agree within 0.03–0.15%, which is real dislocation rather than a reshaping bug.
+
+Next: intermediate and marts layers, then the Phase 3 incremental with the
+lookback window.

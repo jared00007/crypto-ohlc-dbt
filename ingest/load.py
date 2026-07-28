@@ -71,6 +71,8 @@ def ensure_table(con: duckdb.DuckDBPyConnection, venue: Venue) -> None:
         f"""
         create table if not exists {RAW_SCHEMA}."{venue.table}" (
             {columns},
+            "_venue_symbol" VARCHAR,
+            "_granularity" VARCHAR,
             "_loaded_at" TIMESTAMP,
             "_batch_id" VARCHAR
         )
@@ -94,10 +96,14 @@ def load_venue(
 
     ensure_table(con, venue)
     loaded_at = datetime.now(UTC)
-    placeholders = ", ".join(["?"] * (width + 2))
+    # Symbol and granularity are request parameters, and Binance.US and Coinbase do
+    # not echo them in the payload. Landing them as provenance keeps a row
+    # self-describing once more than one pair is loaded.
+    audit = [venue.venue_symbol, venue.granularity, loaded_at, batch_id]
+    placeholders = ", ".join(["?"] * (width + len(audit)))
     con.executemany(
         f'insert into {RAW_SCHEMA}."{venue.table}" values ({placeholders})',
-        [[*row, loaded_at, batch_id] for row in rows],
+        [[*row, *audit] for row in rows],
     )
     return len(rows)
 

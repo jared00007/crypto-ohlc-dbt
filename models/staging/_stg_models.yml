@@ -1,0 +1,57 @@
+version: 2
+
+models:
+  - name: stg_binance_us__ohlc
+    description: "Binance.US candles normalized to the shared OHLC contract."
+    data_tests: &ohlc_tests
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [venue, venue_symbol, granularity, candle_start]
+      # OHLC invariants: the high must bound every other price, the low must floor
+      # them. A venue reordering its columns would break these before the bad values
+      # reached anything downstream.
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "high >= low"
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "high >= open and high >= close"
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "low <= open and low <= close"
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "volume >= 0"
+    columns: &ohlc_columns
+      - name: venue
+        description: "Exchange the candle came from."
+        data_tests: [not_null]
+      - name: venue_symbol
+        description: "Venue-native pair symbol, as requested from the API."
+        data_tests: [not_null]
+      - name: granularity
+        description: "Candle width, e.g. 1h. Named granularity because `interval` is a reserved word."
+        data_tests: [not_null]
+      - name: candle_start
+        description: "UTC start of the candle, normalized from the venue's own epoch units."
+        data_tests: [not_null]
+      - name: open
+        data_tests: [not_null]
+      - name: high
+        data_tests: [not_null]
+      - name: low
+        data_tests: [not_null]
+      - name: close
+        data_tests: [not_null]
+      - name: volume
+        data_tests: [not_null]
+
+  - name: stg_coinbase__ohlc
+    description: "Coinbase candles normalized to the shared OHLC contract, including the low/high/open/close reorder."
+    data_tests: *ohlc_tests
+    columns: *ohlc_columns
+
+  - name: stg_kraken__ohlc
+    description: "Kraken candles normalized to the shared OHLC contract, unwrapped from the result.<pair> envelope."
+    data_tests: *ohlc_tests
+    columns: *ohlc_columns
