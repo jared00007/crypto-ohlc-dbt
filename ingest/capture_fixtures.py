@@ -34,7 +34,7 @@ def capture(client: httpx.Client, venue: Venue) -> tuple[Path, int]:
     destination = FIXTURE_ROOT / venue.name / venue.fixture_name
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(json.dumps(payload, indent=2) + "\n")
-    return destination, venue.count_candles(payload)
+    return destination, len(venue.extract_rows(payload))
 
 
 def main() -> int:

@@ -28,6 +28,23 @@ uv run dbt debug # verify profile and DuckDB connection
 `profiles.yml` is committed at the project root, so no `~/.dbt` setup is needed —
 dbt reads the working directory first.
 
+## Ingestion
+
+```bash
+# Capture fresh payloads from the venues (needs network; run occasionally)
+uv run python -m ingest.capture_fixtures
+
+# Land rows into raw. --source=fixture is offline and reproducible; CI uses it.
+uv run python -m ingest.load --source fixture
+uv run python -m ingest.load --source web --venue kraken
+```
+
+Landing is append-only and does no reshaping: rows keep the venue's own column
+names, order, timestamp units, and price representation. Prices land as `VARCHAR`
+or `DECIMAL`, never `FLOAT` — Coinbase quotes numbers rather than strings, so the
+loader decodes them with `Decimal` to avoid binary rounding. Each row carries
+`_loaded_at` and `_batch_id`.
+
 ## Schemas
 
 Models land in real DuckDB schemas — `raw`, `staging`, `intermediate`, `marts` —
@@ -37,6 +54,8 @@ override is in `macros/generate_schema_name.sql`.
 
 ## Status
 
-Phase 0 (scaffold) is complete: pinned environment, dbt project config, schema
-override, and package declaration. `dbt debug` passes and the schema override is
-verified against DuckDB.
+Phase 0 (scaffold) and the ingestion half of Phase 1 are complete: pinned
+environment, dbt project config, schema override, committed fixtures for all
+three venues, and a dual-path loader landing 1,571 rows into `raw`.
+
+Next: `stg_<venue>__ohlc` models to reconcile the three shapes.
