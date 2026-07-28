@@ -43,10 +43,13 @@ class Venue:
 
 VENUES: tuple[Venue, ...] = (
     Venue(
-        name="binance",
+        # Binance.US, not Binance global: the latter answers 451 to US IPs. It is
+        # also the more honest label — separate entity, separate liquidity, which
+        # matters once we compare venues for dislocation.
+        name="binance_us",
         venue_symbol="BTCUSDT",
         granularity="1h",
-        url="https://api.binance.com/api/v3/klines",
+        url="https://api.binance.us/api/v3/klines",
         params={"symbol": "BTCUSDT", "interval": "1h", "limit": 500},
         fixture_name="btcusdt_1h.json",
         count_candles=_count_rows,
